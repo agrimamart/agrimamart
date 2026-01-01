@@ -307,19 +307,44 @@ function updateCount(){
 cartCount.innerText=Object.values(cart).reduce((a,b)=>a+b,0);
 }
 
-/* CHECKOUT */
+/* CHECKOUT – CLEAR CART ONLY AFTER WA OPENS ONCE */
 function checkout(){
-const compressed=LZString.compressToEncodedURIComponent(JSON.stringify(cart));
-let msg="Hello Agrima Mart 👋%0A%0A🧾 Order Details%0A";
-let total=0;
-for(let n in cart){
-let p=products.find(x=>x.name===n);
-let t=p.price*cart[n]; total+=t;
-msg+=`• ${n} × ${cart[n]} = ₹${t}%0A`;
-}
-const link=`${location.origin}${location.pathname}?o=${compressed}`;
-msg+=`%0A💰 Total: ₹${total}%0A%0A📦 View Cart:%0A${link}`;
-window.open(`https://wa.me/${phone}?text=${msg}`,"_blank");
+  if(frozen || Object.keys(cart).length === 0) return;
+
+  const compressed = LZString.compressToEncodedURIComponent(JSON.stringify(cart));
+  let msg = "Hello Agrima Mart 👋%0A%0A🧾 Order Details%0A";
+  let total = 0;
+
+  for(let n in cart){
+    let p = products.find(x => x.name === n);
+    let t = p.price * cart[n];
+    total += t;
+    msg += `• ${n} × ${cart[n]} = ₹${t}%0A`;
+  }
+
+  const link = `${location.origin}${location.pathname}?o=${compressed}`;
+  msg += `%0A💰 Total: ₹${total}%0A%0A📦 View Cart:%0A${link}`;
+
+  /* 🔐 prevent multiple clears */
+  if(sessionStorage.getItem("wa_sent")) return;
+  sessionStorage.setItem("wa_sent","1");
+
+  /* open WhatsApp */
+  window.open(`https://wa.me/${phone}?text=${msg}`,"_blank");
+
+  /* clear cart AFTER WhatsApp opens once */
+  setTimeout(()=>{
+    cart = {};
+    localStorage.removeItem("cart");
+    sessionStorage.removeItem("wa_sent");
+
+    cartModal.style.display = "none";
+    cartOpen = false;
+
+    updateCount();
+    renderProducts();
+    showToast("Order sent successfully 🧾");
+  }, 1000);
 }
 
 /* BACK BUTTON (FIXED PRIORITY) */
